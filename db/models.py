@@ -19,6 +19,6 @@ class Pto(db.Model):
     user_id = Column(Integer, db.ForeignKey("user.id"))
     # This sets up a foreign key relationship with our users.
     user = db.relationship("User", backref=backref("pto", lazy="dynamic"))
-    current_pto_balance = Column(Float, nullable=False, default=0)
+    pto_balance = Column(Float, nullable=False, default=0)
     last_updated = Column(DateTime, nullable=False)
     is_current = Column(Boolean, nullable=False, default=False)
