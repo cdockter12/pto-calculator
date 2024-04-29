@@ -1,6 +1,7 @@
 from datetime import datetime
 from urllib import request
 from flask import Flask, render_template, request, session, flash, redirect, url_for
+from passlib.hash import pbkdf2_sha256
 from jinja2 import Template
 
 app = Flask(__name__)
@@ -36,10 +37,12 @@ def login():
         email = request.form.get("email")
         password = request.form.get("password")
         # print(email, password)
-        # Check if our email & password match a record in our db.
-        if users.get(email) == password:
+        # Check if our email & password match a record in our db. Verifying the password passed in from form with the properties from when it was hashed in DB.
+        if pbkdf2_sha256.verify(password, users.get(email)):
             # Lets our browser know we have a valid and logged in user.
             session["email"] = email
+            # pull this from database.
+            # session['pto_balance'] = pto_balance
 
             flash("Login Successful!")
             return redirect(url_for('home'))
@@ -53,7 +56,7 @@ def login():
 def register():
     if request.method == "POST":
         email = request.form.get("email")
-        password = request.form.get("password")
+        password = pbkdf2_sha256.hash(request.form.get("password"))
         pto_balance = request.form.get("pto_balance")
 
         # save to DB or users dict
