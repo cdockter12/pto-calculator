@@ -23,18 +23,23 @@ def create_app():
     with app.app_context():
         db.create_all()
 
-    users = {}
-
     @app.route('/', methods=["GET", "POST"])
     def home():
         if request.method == "POST":
             pto_mod = request.form.get("addhours")
-            formatted_date = datetime.today().strftime("%Y-%m-%d")
-            # Database modification here
-            print(pto_mod, formatted_date)
             if session.get("email"):
-                # Add pto balance to params here, pass in on html file.
-                users['pto_balance'] += pto_mod
+                # Get old pto balance
+                user = db.session.query(Users).filter(Users.email == session["email"]).first()
+                pto = db.session.query(Pto).filter(Pto.user_id == user.id and Pto.is_current is True).first()
+                current_pto = pto.pto_balance
+                # Set the old PTO balance row is_current to 0
+                pto.is_current = False
+                # Create new PTO balance row with is_current to 1, preserving historical records.
+                new_pto = Pto(pto_balance=(current_pto + float(pto_mod)), user_id=user.id, last_updated=datetime.now(), is_current=True)
+                db.session.add(new_pto)
+                db.session.commit()
+                # Change session info for correct render after change
+                session["pto_balance"] = new_pto.pto_balance
             else:
                 # If user is not logged in, what do we do with form input?
                 flash("You must be logged in to do that!")
