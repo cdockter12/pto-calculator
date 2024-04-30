@@ -38,7 +38,7 @@ def create_app():
                 # This continually selects the first row and doesn't execute again. Why?
                 pto = db.session.query(Pto).filter(Pto.user_id == user.id and Pto.is_current is True).first()
                 pto.pto_balance += float(pto_mod)
-
+                pto.last_update = datetime.now()
                 # ---------------------------------------------- # Needs Work
                 # Set the old PTO balance row is_current to False
                 # pto.is_current = False
@@ -48,9 +48,7 @@ def create_app():
 
                 # db.session.add(new_pto)
                 # ---------------------------------------------- #
-
                 db.session.commit()
-
                 # Change session info for correct render after change
                 session["pto_balance"] = pto.pto_balance
             else:
@@ -124,5 +122,11 @@ def create_app():
             return redirect(url_for('login'))
 
         return render_template("auth/register.html")
+
+    @app.route("/logout")
+    def logout():
+        if session.get("email"):
+            session["email"] = None
+        return redirect(url_for("home"))
 
     return app
