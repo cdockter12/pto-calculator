@@ -25,21 +25,34 @@ def create_app():
 
     @app.route('/', methods=["GET", "POST"])
     def home():
+        """
+
+        :return:
+        """
         if request.method == "POST":
-            pto_mod = request.form.get("addhours")
             if session.get("email"):
+                # Get form hour amount
+                pto_mod = request.form.get("addhours")
                 # Get old pto balance
                 user = db.session.query(Users).filter(Users.email == session["email"]).first()
+                # This continually selects the first row and doesn't execute again. Why?
                 pto = db.session.query(Pto).filter(Pto.user_id == user.id and Pto.is_current is True).first()
-                current_pto = pto.pto_balance
-                # Set the old PTO balance row is_current to 0
-                pto.is_current = False
-                # Create new PTO balance row with is_current to 1, preserving historical records.
-                new_pto = Pto(pto_balance=(current_pto + float(pto_mod)), user_id=user.id, last_updated=datetime.now(), is_current=True)
-                db.session.add(new_pto)
+                pto.pto_balance += float(pto_mod)
+
+                # ---------------------------------------------- # Needs Work
+                # Set the old PTO balance row is_current to False
+                # pto.is_current = False
+
+                # Create new PTO balance row with is_current to True, preserving historical records.
+                # new_pto = Pto(pto_balance=(current_pto + float(pto_mod)), user_id=user.id, last_updated=datetime.now(), is_current=True)
+
+                # db.session.add(new_pto)
+                # ---------------------------------------------- #
+
                 db.session.commit()
+
                 # Change session info for correct render after change
-                session["pto_balance"] = new_pto.pto_balance
+                session["pto_balance"] = pto.pto_balance
             else:
                 # If user is not logged in, what do we do with form input?
                 flash("You must be logged in to do that!")
@@ -51,6 +64,10 @@ def create_app():
 
     @app.route('/login/', methods=["GET", "POST"])
     def login():
+        """
+
+        :return:
+        """
         if request.method == "POST":
             email = request.form.get("email")
             password = request.form.get("password")
@@ -76,6 +93,10 @@ def create_app():
 
     @app.route('/register/', methods=["GET", "POST"])
     def register():
+        """
+
+        :return:
+        """
         if request.method == "POST":
             email = request.form.get("email")
             password = pbkdf2_sha256.hash(request.form.get("password"))
