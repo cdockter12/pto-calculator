@@ -3,9 +3,15 @@ from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 from urllib import request
 from flask import render_template, request, session, flash, redirect, url_for, abort
+from db.models import db, Users, Pto
 
 
 def init_views(app):
+    # Initialize DB and create our tables.
+    db.init_app(app)
+    with app.app_context():
+        db.create_all()
+
     @app.route('/', methods=["GET", "POST"])
     def home():
         """
