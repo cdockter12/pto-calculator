@@ -3,8 +3,8 @@ import os
 
 def generate_db_conn_string():
     """
-
-    :return:
+    This function grabs environment variables from the .env file and generates a db connection string.
+    :return: db connection string
     """
     if os.environ['ENV'] == 'development':
         db_name = os.environ['DB_NAME_DEV']

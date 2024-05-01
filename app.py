@@ -9,32 +9,29 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from db.models import db, Users, Pto
 from db.session import generate_db_conn_string
-from apscheduler.schedulers.background import BackgroundScheduler
 from flask_apscheduler import APScheduler
-from jinja2 import Template
 
 
 def create_app():
     app = Flask(__name__)
-
     app.config['SQLALCHEMY_DATABASE_URI'] = generate_db_conn_string()
-    # Manually generate app secret key? Read about this more...
     app.secret_key = os.environ['SECRET_KEY']
 
+    # Initialize DB and create our tables.
     db.init_app(app)
-    # Creates our tables in the DB
     with app.app_context():
         db.create_all()
 
+    # Initialize our background scheduler for auto-updating PTO balances.
     scheduler = APScheduler()
-    # scheduler.add_job(func=update_pto_on_pay_period(), trigger="cron", day='last')
     scheduler.init_app(app)
     scheduler.start()
 
     def send_email_update(input_msg, recipient):
         """
-
-        :return:
+        This function sends an email to the recipient when their PTO balance is modified by the scheduler.
+        :param: input_msg: String - the message we want to send to the recipient.
+        :param: recipient: String - the email address of the recipient.
         """
         sender = os.environ['MAIL_USERNAME']
         password = os.environ['MAIL_PASSWORD']
@@ -52,8 +49,9 @@ def create_app():
     # @scheduler.task('interval', id='test_schedule', seconds=5)
     def update_pto_on_pay_period():
         """
-
-        :return:
+        This function updates all users pto balance in the database on the last day of the month, then calls a function
+        to send an email update to the user notifying them that their pto balance has changed.
+        :return: None
         """
         with scheduler.app.app_context():
             # Grab all users
@@ -70,7 +68,7 @@ def create_app():
                 pto = db.session.query(Pto).filter(Pto.user_id == user.id and Pto.is_current is True).first()
                 pto.pto_balance += pto_mod
                 # Send user an email w/ current pto
-                input_msg = f"Dear {user.email}, a pay period has passed! Your current PTO balance is now {pto.pto_balance}"
+                input_msg = f"Dear {user.email}, a pay period has passed! Your current PTO balance is now {pto.pto_balance} hrs."
                 send_email_update(input_msg, user.email)
 
             db.session.commit()
@@ -78,8 +76,8 @@ def create_app():
     @app.route('/', methods=["GET", "POST"])
     def home():
         """
-
-        :return:
+        Includes functionality for updating PTO balances. Also displays the current balance on the home page.
+        :return: Home page with different data if session detects logged in user or not.
         """
         if request.method == "POST":
             if session.get("email"):
@@ -87,7 +85,7 @@ def create_app():
                 pto_mod = request.form.get("addhours")
                 # Get old pto balance
                 user = db.session.query(Users).filter(Users.email == session["email"]).first()
-                # This continually selects the first row and doesn't execute again. Why?
+                # Update PTO balance in place.
                 pto = db.session.query(Pto).filter(Pto.user_id == user.id and Pto.is_current is True).first()
                 pto.pto_balance += float(pto_mod)
                 pto.last_update = datetime.now()
@@ -102,11 +100,12 @@ def create_app():
                 # db.session.add(new_pto)
                 # ---------------------------------------------- #
 
+                # Commit changes to DB.
                 db.session.commit()
                 # Change session info for correct render after change
                 session["pto_balance"] = pto.pto_balance
             else:
-                # If user is not logged in, what do we do with form input?
+                # If user is not logged in, display flash message.
                 flash("You must be logged in to do that!")
 
         if session.get("email"):
@@ -117,8 +116,8 @@ def create_app():
     @app.route('/login/', methods=["GET", "POST"])
     def login():
         """
-
-        :return:
+        Login route that sets up browser session & verifies user credentials with stored record in DB.
+        :return: Home page if successful POST request, Login page if GET request.
         """
         if request.method == "POST":
             email = request.form.get("email")
@@ -127,7 +126,8 @@ def create_app():
             # Query the user
             user = db.session.query(Users).filter(Users.email == email).first()
 
-            # Check if our email & password match a record in our db. Verifying the password passed in from form with the properties from when it was hashed in DB.
+            # Check if our email & password match a record in our db.
+            # Verifying the password passed in from form with the properties from when it was hashed in DB.
             if pbkdf2_sha256.verify(password, user.password):
                 # Lets our browser know we have a valid and logged in user.
                 session["email"] = email
@@ -146,8 +146,8 @@ def create_app():
     @app.route('/register/', methods=["GET", "POST"])
     def register():
         """
-
-        :return:
+        Registers a new user in our database and sets initial PTO balance.
+        :return: Redirect to login page or register if GET request.
         """
         if request.method == "POST":
             email = request.form.get("email")
@@ -155,30 +155,35 @@ def create_app():
             pto_balance = request.form.get("pto_balance")
             is_senior = request.form.get("is_senior")
 
-            # save to DB or users dict
+            # Create new user object with form data.
             user = Users(email=email, password=password, is_senior=is_senior)
             try:
                 db.session.add(user)
                 db.session.commit()
-                # Need to commit the user before PTO, so we can setup the foreign key constraint.
+                # Need to commit the user before PTO, so we can set up the foreign key constraint.
                 pto = Pto(pto_balance=pto_balance, user_id=user.id, last_updated=datetime.now(), is_current=True)
                 db.session.add(pto)
                 db.session.commit()
             except SQLAlchemyError as e:
-                # Add functionality for duplicate emails later?
+                # Add notification for duplicate emails later?
                 abort(500, message="An error occurred while registering the user.")
 
-            # Lets our browser know we have a valid and logged in user. Displayed on home page.
+            # Lets our browser know we have a valid and logged-in user. Displayed on home page.
             session["email"] = email
             session["pto_balance"] = pto_balance
 
             flash("Registration Successful!")
+            # We can optionally send an email verification here.
             return redirect(url_for('login'))
 
         return render_template("auth/register.html")
 
     @app.route("/logout")
     def logout():
+        """
+        Resets session data signifying a "logged out" user. Redirects to home page.
+        :return: Redirect to home page.
+        """
         if session.get("email"):
             session["email"] = None
         return redirect(url_for("home"))
