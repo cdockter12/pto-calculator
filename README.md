@@ -59,7 +59,7 @@ instructions for that are listed below.
    ```
 3. Run container from image.
    ```shell
-   docker run -e LOCAL_PG_DBHOST=docker.for.mac.host.internal --env-file .env -d pto-calculator
+   docker run -e LOCAL_PG_DBHOST=docker.for.mac.host.internal --env-file .env -d -p 5000:5000 pto-calculator
    ```
    
 
