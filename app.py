@@ -1,5 +1,7 @@
 import os
+import smtplib
 from datetime import datetime
+from email.mime.text import MIMEText
 from urllib import request
 from flask import Flask, render_template, request, session, flash, redirect, url_for, abort
 from passlib.hash import pbkdf2_sha256
@@ -7,6 +9,8 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from db.models import db, Users, Pto
 from db.session import generate_db_conn_string
+from apscheduler.schedulers.background import BackgroundScheduler
+from flask_apscheduler import APScheduler
 from jinja2 import Template
 
 
@@ -14,14 +18,62 @@ def create_app():
     app = Flask(__name__)
 
     app.config['SQLALCHEMY_DATABASE_URI'] = generate_db_conn_string()
-    db.init_app(app)
-
     # Manually generate app secret key? Read about this more...
     app.secret_key = os.environ['SECRET_KEY']
 
+    db.init_app(app)
     # Creates our tables in the DB
     with app.app_context():
         db.create_all()
+
+    scheduler = APScheduler()
+    # scheduler.add_job(func=update_pto_on_pay_period(), trigger="cron", day='last')
+    scheduler.init_app(app)
+    scheduler.start()
+
+    def send_email_update(input_msg, recipient):
+        """
+
+        :return:
+        """
+        sender = os.environ['MAIL_USERNAME']
+        password = os.environ['MAIL_PASSWORD']
+        recipients = [recipient]
+        msg = MIMEText(input_msg)
+        msg['Subject'] = "Your Current PTO Balance Has Been Updated"
+        msg['From'] = sender
+        msg['To'] = ', '.join(recipients)
+        smtp_server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        smtp_server.login(sender, password)
+        smtp_server.sendmail(sender, recipients, msg.as_string())
+        smtp_server.quit()
+
+    @scheduler.task('cron', id='fetch_pto', day='last')
+    # @scheduler.task('interval', id='test_schedule', seconds=5)
+    def update_pto_on_pay_period():
+        """
+
+        :return:
+        """
+        with scheduler.app.app_context():
+            # Grab all users
+            users = db.session.query(Users).all()
+            # This continually selects the first row and doesn't execute again. Why?
+            for user in users:
+                # Check for is_senior flag
+                if user.is_senior == 1:
+                    # 4 wks / year
+                    pto_mod = 20 / 12
+                else:
+                    # 3 wks / year
+                    pto_mod = 15 / 12
+                pto = db.session.query(Pto).filter(Pto.user_id == user.id and Pto.is_current is True).first()
+                pto.pto_balance += pto_mod
+                # Send user an email w/ current pto
+                input_msg = f"Dear {user.email}, a pay period has passed! Your current PTO balance is now {pto.pto_balance}"
+                send_email_update(input_msg, user.email)
+
+            db.session.commit()
 
     @app.route('/', methods=["GET", "POST"])
     def home():
@@ -39,6 +91,7 @@ def create_app():
                 pto = db.session.query(Pto).filter(Pto.user_id == user.id and Pto.is_current is True).first()
                 pto.pto_balance += float(pto_mod)
                 pto.last_update = datetime.now()
+
                 # ---------------------------------------------- # Needs Work
                 # Set the old PTO balance row is_current to False
                 # pto.is_current = False
@@ -48,6 +101,7 @@ def create_app():
 
                 # db.session.add(new_pto)
                 # ---------------------------------------------- #
+
                 db.session.commit()
                 # Change session info for correct render after change
                 session["pto_balance"] = pto.pto_balance
