@@ -29,8 +29,8 @@ def init_controllers(app):
         smtp_server.sendmail(sender, recipients, msg.as_string())
         smtp_server.quit()
 
-    # @scheduler.task('cron', id='fetch_pto', day='last')
-    @scheduler.task('interval', id='test_schedule', seconds=10)
+    @scheduler.task('cron', id='fetch_pto', day='last')
+    # @scheduler.task('interval', id='test_schedule', seconds=10)
     def update_pto_on_pay_period():
         """
         This function updates all users pto balance in the database on the last day of the month, then calls a function
@@ -52,7 +52,8 @@ def init_controllers(app):
                 pto = db.session.query(Pto).filter(Pto.user_id == user.id and Pto.is_current is True).first()
                 pto.pto_balance += pto_mod
                 # Send user an email w/ current pto
-                input_msg = f"Dear {user.email}, a pay period has passed! Your current PTO balance is now {pto.pto_balance} hrs."
+                input_msg = (f"Dear {user.email}, a pay period has passed! "
+                             f"Your current PTO balance is now {round(pto.pto_balance), 3} hrs.")
                 send_email_update(input_msg, user.email)
 
             db.session.commit()
