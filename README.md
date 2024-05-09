@@ -71,7 +71,7 @@ instructions for that are listed below.
 	  brew install pyenv-virtualenv
       source ~/.bash_profile  
 	```
-   Use pyenv to install python 3.8.5:
+   Use pyenv to install python 3.10:
    ```
 	  pyenv install 3.10 
    ```
