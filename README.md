@@ -79,7 +79,7 @@ instructions for that are listed below.
 2. Create the application python environment. I called mine pto (due to the original scope of the project):
    ```
    cd ~/src/pto-calculator (or wherever you downloaded repo)  
-   pyenv virtualenv 3.10.18 pto  
+   pyenv virtualenv 3.10 pto  
    pyenv local pto  
    ```
 3. Install Python Packages.
