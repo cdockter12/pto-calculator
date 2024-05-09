@@ -73,7 +73,7 @@ instructions for that are listed below.
 	```
    Use pyenv to install python 3.8.5:
    ```
-	  pyenv install 3.10.18 
+	  pyenv install 3.10 
    ```
 
 2. Create the application python environment. I called mine pto (due to the original scope of the project):
