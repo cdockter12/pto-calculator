@@ -69,9 +69,9 @@ instructions for that are listed below.
     ```
 	  brew install pyenv  
 	  brew install pyenv-virtualenv
-   echo 'eval "$(pyenv init -)"' >> ~/.bash_profile  
+      echo 'eval "$(pyenv init -)"' >> ~/.bash_profile  
 	  echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.bash_profile  
-   source ~/.bash_profile  
+      source ~/.bash_profile  
 	```
    Use pyenv to install python 3.10:
    ```
