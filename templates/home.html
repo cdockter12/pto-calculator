@@ -1,11 +1,22 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h1>Hello, {{ email }}</h1>
-<p>Your PTO balance is {{ pto }} hr(s).</p>
-<form class="form" method="POST">
-    <label for="addhours">Add Hours: (+ or -)</label><br>
-    <input type="text" id="addhours" name="addhours"><br>
-    <button type="submit" class="form__submit">Add PTO</button>
-</form>
+<h1></h1>
+<p></p>
+<div class="p-5 mb-4 bg-body-tertiary rounded-3">
+    <div class="container-fluid py-5">
+        <h1 class="display-5 fw-bold">Hello, {{ email }}</h1>
+        <p class="col-md-8 fs-4">Your PTO balance is {{ pto }} hr(s).</p>
+        <form class="form" method="POST">
+            <!--    <label for="addhours">Add Hours: (+ or -)</label><br>-->
+            <div class="input-group mb-3">
+                <span class="input-group-text" id="inputGroup-sizing-default">Add Hours: (+ or -)</span>
+                <input type="text" id="addhours" name="addhours" class="form-control" placeholder="3.5"
+                       aria-label="Sizing example input" aria-describedby="inputGroup-sizing-default">
+                <button type="submit" class="form__submit btn btn-outline-primary">Add PTO</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}
